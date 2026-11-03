@@ -72,9 +72,13 @@ impl Violation for UnnecessaryEmptyIterableWithinDequeCall {
 }
 
 /// RUF037
-pub(crate) fn unnecessary_literal_within_deque_call(checker: &Checker, deque: ast::ExprCall<'_>) {
-    let func = deque.func();
-    let arguments = deque.arguments();
+pub(crate) fn unnecessary_literal_within_deque_call(
+    checker: &Checker,
+    deque_fields: &ast::ExprCallFields<'_>,
+) {
+    let deque = deque_fields.node;
+    let func = deque_fields.func;
+    let arguments = deque_fields.arguments;
 
     let Some(qualified) = checker.semantic().resolve_qualified_name(func) else {
         return;
@@ -118,14 +122,14 @@ pub(crate) fn unnecessary_literal_within_deque_call(checker: &Checker, deque: as
         UnnecessaryEmptyIterableWithinDequeCall {
             has_maxlen: maxlen.is_some(),
         },
-        deque.range(),
+        deque_fields.range,
     );
 
     // Return without a fix in the presence of a starred argument because we can't accurately
     // generate the fix. If all of the arguments are unpacked (e.g. `deque(*([], 10))`), we will
     // have already returned after the first `find_argument_value` call.
-    if deque
-        .arguments()
+    if deque_fields
+        .arguments
         .args()
         .iter()
         .any(ast::Expr::is_starred_expr)

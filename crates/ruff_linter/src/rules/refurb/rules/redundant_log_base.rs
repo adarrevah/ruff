@@ -76,18 +76,18 @@ impl Violation for RedundantLogBase {
 }
 
 /// FURB163
-pub(crate) fn redundant_log_base(checker: &Checker, call: ast::ExprCall<'_>) {
-    if !call.arguments().keywords().is_empty() {
+pub(crate) fn redundant_log_base(checker: &Checker, call: &ast::ExprCallFields<'_>) {
+    if !call.arguments.keywords().is_empty() {
         return;
     }
 
-    let Some([arg, base]) = call.arguments().args().as_array() else {
+    let Some([arg, base]) = call.arguments.args().as_array() else {
         return;
     };
 
     if !checker
         .semantic()
-        .resolve_qualified_name(call.func())
+        .resolve_qualified_name(call.func)
         .is_some_and(|qualified_name| matches!(qualified_name.segments(), ["math", "log"]))
     {
         return;
@@ -112,9 +112,9 @@ pub(crate) fn redundant_log_base(checker: &Checker, call: ast::ExprCall<'_>) {
             base,
             arg: checker.locator().slice(arg).into(),
         },
-        call.range(),
+        call.range,
     );
-    diagnostic.try_set_fix(|| generate_fix(checker, call, base, arg));
+    diagnostic.try_set_fix(|| generate_fix(checker, call.node, base, arg));
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

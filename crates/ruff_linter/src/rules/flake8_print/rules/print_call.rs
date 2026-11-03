@@ -121,10 +121,11 @@ impl Violation for PPrint {
 }
 
 /// T201, T203
-pub(crate) fn print_call(checker: &Checker, call: ast::ExprCall<'_>) {
+pub(crate) fn print_call(checker: &Checker, call_fields: &ast::ExprCallFields<'_>) {
+    let call = call_fields.node;
     let semantic = checker.semantic();
 
-    let Some(qualified_name) = semantic.resolve_qualified_name(call.func()) else {
+    let Some(qualified_name) = semantic.resolve_qualified_name(call_fields.func) else {
         return;
     };
 
@@ -135,7 +136,7 @@ pub(crate) fn print_call(checker: &Checker, call: ast::ExprCall<'_>) {
             if has_non_default_output_target(semantic, call, "file") {
                 return;
             }
-            checker.report_diagnostic_if_enabled(Print, call.func().range())
+            checker.report_diagnostic_if_enabled(Print, call_fields.func.range())
         }
         ["pprint", "pprint"] => {
             // If the pprint call has a `stream=` argument (that isn't `None`,
@@ -143,7 +144,7 @@ pub(crate) fn print_call(checker: &Checker, call: ast::ExprCall<'_>) {
             if has_non_default_output_target(semantic, call, "stream") {
                 return;
             }
-            checker.report_diagnostic_if_enabled(PPrint, call.func().range())
+            checker.report_diagnostic_if_enabled(PPrint, call_fields.func.range())
         }
         _ => return,
     };

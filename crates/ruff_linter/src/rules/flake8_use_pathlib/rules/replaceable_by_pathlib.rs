@@ -1,5 +1,5 @@
 use ruff_diagnostics::Applicability;
-use ruff_python_ast::ExprCall;
+use ruff_python_ast::ExprCallFields;
 use ruff_text_size::Ranged;
 
 use crate::checkers::ast::Checker;
@@ -13,12 +13,12 @@ use crate::rules::flake8_use_pathlib::{
 };
 use crate::{Edit, Fix};
 
-pub(crate) fn replaceable_by_pathlib(checker: &Checker, call: ExprCall<'_>) {
-    let Some(qualified_name) = checker.semantic().resolve_qualified_name(call.func()) else {
+pub(crate) fn replaceable_by_pathlib(checker: &Checker, call: &ExprCallFields<'_>) {
+    let Some(qualified_name) = checker.semantic().resolve_qualified_name(call.func) else {
         return;
     };
 
-    let range = call.func().range();
+    let range = call.func.range();
     match qualified_name.segments() {
         // PTH118
         ["os", module @ ("path" | "sep"), "join"] => {
@@ -26,7 +26,7 @@ pub(crate) fn replaceable_by_pathlib(checker: &Checker, call: ExprCall<'_>) {
                 OsPathJoin {
                     module: module.to_string(),
                     joiner: if call
-                        .arguments()
+                        .arguments
                         .args()
                         .iter()
                         .any(ruff_python_ast::Expr::is_starred_expr)
@@ -55,7 +55,7 @@ pub(crate) fn replaceable_by_pathlib(checker: &Checker, call: ExprCall<'_>) {
             //               0           1              2            3                 4
             // glob.glob(pathname, *, root_dir=None, dir_fd=None, recursive=False, include_hidden=False)
             // ```
-            if is_keyword_only_argument_non_default(call.arguments(), "dir_fd") {
+            if is_keyword_only_argument_non_default(call.arguments, "dir_fd") {
                 return;
             }
 
@@ -68,7 +68,7 @@ pub(crate) fn replaceable_by_pathlib(checker: &Checker, call: ExprCall<'_>) {
         }
         // PTH208
         ["os", "listdir"] => {
-            let path = call.arguments().find_argument_value("path", 0);
+            let path = call.arguments.find_argument_value("path", 0);
             if path.is_some_and(|expr| is_file_descriptor(expr, checker.semantic())) {
                 return;
             }
@@ -78,14 +78,14 @@ pub(crate) fn replaceable_by_pathlib(checker: &Checker, call: ExprCall<'_>) {
                     diagnostic.try_set_fix(|| {
                         let (import_edit, binding) = checker.importer().get_or_import_symbol(
                             &ImportRequest::import("pathlib", "Path"),
-                            call.start(),
+                            call.range.start(),
                             checker.semantic(),
                         )?;
 
                         Ok(Fix::applicable_edits(
                             Edit::range_replacement(
                                 format!("{binding}({}).iterdir()", checker.locator().slice(path)),
-                                call.range(),
+                                call.range,
                             ),
                             [import_edit],
                             Applicability::DisplayOnly,

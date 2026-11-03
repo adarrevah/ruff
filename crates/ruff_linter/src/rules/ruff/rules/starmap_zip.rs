@@ -1,4 +1,5 @@
 use ruff_macros::{ViolationMetadata, derive_message_formats};
+use ruff_python_ast::ExprCallFields;
 use ruff_python_ast::token::{TokenKind, parenthesized_range};
 use ruff_python_ast::{ExprCall, ExprKind, PythonVersion};
 use ruff_text_size::{Ranged, TextRange};
@@ -58,15 +59,15 @@ impl Violation for StarmapZip {
 }
 
 /// RUF058
-pub(crate) fn starmap_zip(checker: &Checker, call: ExprCall<'_>) {
+pub(crate) fn starmap_zip(checker: &Checker, call: &ExprCallFields<'_>) {
     let semantic = checker.semantic();
 
-    if !call.arguments().keywords().is_empty() {
+    if !call.arguments.keywords().is_empty() {
         return;
     }
 
     let Some([_map_func, ExprKind::Call(iterable_call)]) = call
-        .arguments()
+        .arguments
         .args()
         .as_array()
         .map(|items| items.map(ruff_python_ast::Expr::classify))
@@ -106,7 +107,7 @@ pub(crate) fn starmap_zip(checker: &Checker, call: ExprCall<'_>) {
     }
 
     if !semantic
-        .resolve_qualified_name(call.func())
+        .resolve_qualified_name(call.func)
         .is_some_and(|it| matches!(it.segments(), ["itertools", "starmap"]))
     {
         return;
@@ -116,9 +117,9 @@ pub(crate) fn starmap_zip(checker: &Checker, call: ExprCall<'_>) {
         return;
     }
 
-    let mut diagnostic = checker.report_diagnostic(StarmapZip, call.range());
+    let mut diagnostic = checker.report_diagnostic(StarmapZip, call.range);
 
-    if let Some(fix) = replace_with_map(call, iterable_call, checker) {
+    if let Some(fix) = replace_with_map(call.node, iterable_call, checker) {
         diagnostic.set_fix(fix);
     }
 }

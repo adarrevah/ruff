@@ -1,5 +1,6 @@
 use itertools::Itertools;
 use ruff_macros::{ViolationMetadata, derive_message_formats};
+use ruff_python_ast::ExprCallFields;
 use ruff_python_ast::{
     BuildId, Builder, CmpOp, Expr, ExprBytesLiteral, ExprCall, ExprKind, ExprStringLiteral,
     UnaryOp, build,
@@ -81,7 +82,7 @@ const METACHARACTERS: [char; 12] = ['.', '^', '$', '*', '+', '?', '{', '[', '\\'
 const ESCAPABLE_SINGLE_CHARACTERS: &str = "abfnrtv";
 
 /// RUF055
-pub(crate) fn unnecessary_regular_expression(checker: &Checker, call: ExprCall<'_>) {
+pub(crate) fn unnecessary_regular_expression(checker: &Checker, call: &ExprCallFields<'_>) {
     // adapted from unraw_re_pattern
     let semantic = checker.semantic();
 
@@ -89,7 +90,7 @@ pub(crate) fn unnecessary_regular_expression(checker: &Checker, call: ExprCall<'
         return;
     }
 
-    let Some(qualified_name) = semantic.resolve_qualified_name(call.func()) else {
+    let Some(qualified_name) = semantic.resolve_qualified_name(call.func) else {
         return;
     };
 
@@ -99,7 +100,7 @@ pub(crate) fn unnecessary_regular_expression(checker: &Checker, call: ExprCall<'
 
     // skip calls with more than `pattern` and `string` arguments (and `repl`
     // for `sub`)
-    let Some(re_func) = ReFunc::from_call_expr(semantic, call, func) else {
+    let Some(re_func) = ReFunc::from_call_expr(semantic, call.node, func) else {
         return;
     };
 

@@ -43,10 +43,10 @@ impl Violation for SnmpInsecureVersion {
 }
 
 /// S508
-pub(crate) fn snmp_insecure_version(checker: &Checker, call: ast::ExprCall<'_>) {
+pub(crate) fn snmp_insecure_version(checker: &Checker, call: &ast::ExprCallFields<'_>) {
     if checker
         .semantic()
-        .resolve_qualified_name(call.func())
+        .resolve_qualified_name(call.func)
         .is_some_and(|qualified_name| {
             matches!(
                 qualified_name.segments(),
@@ -54,7 +54,7 @@ pub(crate) fn snmp_insecure_version(checker: &Checker, call: ast::ExprCall<'_>) 
             )
         })
     {
-        if let Some(keyword) = call.arguments().find_keyword("mpModel") {
+        if let Some(keyword) = call.arguments.find_keyword("mpModel") {
             if matches!(
                 keyword.value().as_int_literal(),
                 Some(&Int::ZERO | &Int::ONE)

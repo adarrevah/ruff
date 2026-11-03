@@ -1,6 +1,5 @@
 use ruff_macros::{ViolationMetadata, derive_message_formats};
 use ruff_python_ast::ExprKind;
-use ruff_text_size::Ranged;
 
 use ruff_python_ast as ast;
 use ruff_python_semantic::Modules;
@@ -72,14 +71,14 @@ impl Violation for CallDatetimeNowWithoutTzinfo {
 }
 
 /// DTZ005
-pub(crate) fn call_datetime_now_without_tzinfo(checker: &Checker, call: ast::ExprCall<'_>) {
+pub(crate) fn call_datetime_now_without_tzinfo(checker: &Checker, call: &ast::ExprCallFields<'_>) {
     if !checker.semantic().seen_module(Modules::DATETIME) {
         return;
     }
 
     if !checker
         .semantic()
-        .resolve_qualified_name(call.func())
+        .resolve_qualified_name(call.func)
         .is_some_and(|qualified_name| {
             matches!(qualified_name.segments(), ["datetime", "datetime", "now"])
         })
@@ -92,7 +91,7 @@ pub(crate) fn call_datetime_now_without_tzinfo(checker: &Checker, call: ast::Exp
     }
 
     let antipattern = match call
-        .arguments()
+        .arguments
         .find_argument_value("tz", 0)
         .map(ast::Expr::classify)
     {
@@ -101,5 +100,5 @@ pub(crate) fn call_datetime_now_without_tzinfo(checker: &Checker, call: ast::Exp
         None => DatetimeModuleAntipattern::NoTzArgumentPassed,
     };
 
-    checker.report_diagnostic(CallDatetimeNowWithoutTzinfo(antipattern), call.range());
+    checker.report_diagnostic(CallDatetimeNowWithoutTzinfo(antipattern), call.range);
 }

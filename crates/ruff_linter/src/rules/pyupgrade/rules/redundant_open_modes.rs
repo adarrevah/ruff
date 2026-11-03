@@ -58,10 +58,10 @@ impl AlwaysFixableViolation for RedundantOpenModes {
 }
 
 /// UP015
-pub(crate) fn redundant_open_modes(checker: &Checker, call: ast::ExprCall<'_>) {
+pub(crate) fn redundant_open_modes(checker: &Checker, call: &ast::ExprCallFields<'_>) {
     if !checker
         .semantic()
-        .resolve_qualified_name(call.func())
+        .resolve_qualified_name(call.func)
         .is_some_and(|qualified_name| {
             matches!(
                 qualified_name.segments(),
@@ -72,7 +72,7 @@ pub(crate) fn redundant_open_modes(checker: &Checker, call: ast::ExprCall<'_>) {
         return;
     }
 
-    let Some(mode_arg) = call.arguments().find_argument_value("mode", 1) else {
+    let Some(mode_arg) = call.arguments.find_argument_value("mode", 1) else {
         return;
     };
     let ExprKind::StringLiteral(string_literal) = mode_arg.classify() else {
@@ -84,7 +84,7 @@ pub(crate) fn redundant_open_modes(checker: &Checker, call: ast::ExprCall<'_>) {
     };
     let reduced = mode.reduce();
     if reduced != mode {
-        create_diagnostic(call, mode_arg, reduced, checker);
+        create_diagnostic(call.node, mode_arg, reduced, checker);
     }
 }
 

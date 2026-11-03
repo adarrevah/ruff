@@ -77,11 +77,12 @@ impl Violation for DefaultFactoryKwarg {
 }
 
 /// RUF026
-pub(crate) fn default_factory_kwarg(checker: &Checker, call: ast::ExprCall<'_>) {
+pub(crate) fn default_factory_kwarg(checker: &Checker, call_fields: &ast::ExprCallFields<'_>) {
+    let call = call_fields.node;
     // If the call isn't a `defaultdict` constructor, return.
     if !checker
         .semantic()
-        .resolve_qualified_name(call.func())
+        .resolve_qualified_name(call_fields.func)
         .is_some_and(|qualified_name| {
             matches!(qualified_name.segments(), ["collections", "defaultdict"])
         })
@@ -90,12 +91,12 @@ pub(crate) fn default_factory_kwarg(checker: &Checker, call: ast::ExprCall<'_>) 
     }
 
     // If the user provided a positional argument for `default_factory`, return.
-    if !call.arguments().args().is_empty() {
+    if !call_fields.arguments.args().is_empty() {
         return;
     }
 
     // If the user didn't provide a `default_factory` keyword argument, return.
-    let Some(keyword) = call.arguments().find_keyword("default_factory") else {
+    let Some(keyword) = call_fields.arguments.find_keyword("default_factory") else {
         return;
     };
 
@@ -108,7 +109,7 @@ pub(crate) fn default_factory_kwarg(checker: &Checker, call: ast::ExprCall<'_>) 
         DefaultFactoryKwarg {
             default_factory: SourceCodeSnippet::from_str(checker.locator().slice(keyword)),
         },
-        call.range(),
+        call_fields.range,
     );
     diagnostic
         .try_set_fix(|| convert_to_positional(call, keyword, checker.locator(), checker.tokens()));
